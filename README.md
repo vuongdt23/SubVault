@@ -48,6 +48,20 @@ npm run dev                                       # http://localhost:4321
 npm test                                          # unit + smoke tests
 ```
 
+## Run with Docker — TL;DR
+
+Have Docker installed and your subtitles extracted? Three commands:
+
+```bash
+echo "SUBTITLES_ROOT=/path/to/subtitles" > .env   # folder containing english/, vietnamese/, …
+docker compose run --rm indexer                    # build the search data (a few minutes)
+docker compose up --build -d --no-deps web         # serve it → http://localhost:8080
+```
+
+That's it — open <http://localhost:8080>. To update later: `git pull` then re-run
+the last command (add the `indexer` step only if your data changed). The
+step-by-step guide below explains each part if you're new to Docker.
+
 ## Run with real data (Docker) — step by step
 
 This is the recommended way to run SubVault against the full dataset. You don't
