@@ -1,0 +1,11 @@
+node_modules
+dist
+.astro
+# NOTE: public/data is intentionally NOT ignored — the `indexer` step generates
+# it before the image build, and the Dockerfile bakes it into the site via
+# `COPY . .`. The large archive tree lives on an external read-only mount, never
+# in the build context, so nothing huge is copied here.
+fake-subtitles
+.git
+docs
+*.log

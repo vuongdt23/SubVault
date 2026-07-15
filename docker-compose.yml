@@ -1,0 +1,23 @@
+services:
+  # One-shot: generate public/data from the real metadata, then exit.
+  indexer:
+    image: node:22-alpine
+    working_dir: /app
+    environment:
+      SUBTITLES_ROOT: /subtitles
+    volumes:
+      - ./:/app
+      - /storage/media/subtitles:/subtitles:ro
+    command: sh -c "npm ci && npm run gen:index"
+
+  web:
+    build: .
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
+    ports:
+      - "8080:80"
+    volumes:
+      # Serve raw archives directly from the host data.
+      - /storage/media/subtitles:/subtitles:ro
+    restart: unless-stopped
