@@ -48,20 +48,108 @@ npm run dev                                       # http://localhost:4321
 npm test                                          # unit + smoke tests
 ```
 
-## Run with real data (Docker)
+## Run with real data (Docker) — step by step
 
-Point `SUBTITLES_ROOT` at your extracted archive (see `.env.example`), then:
+This is the recommended way to run SubVault against the full dataset. You don't
+need Node, npm, or any build tools installed — Docker does everything in
+containers. If you've never used Docker, this section walks through it.
+
+### 0. Install Docker
+
+Install **Docker Desktop** (Mac/Windows) or **Docker Engine + the Compose
+plugin** (Linux): <https://docs.docker.com/get-docker/>. Verify it works:
 
 ```bash
-export SUBTITLES_ROOT=/path/to/subtitles       # or put it in a .env file
-docker compose run --rm indexer                # build public/data from metadata
-docker compose up --build web                  # serve on http://localhost:8080
+docker --version
+docker compose version
 ```
 
-- `indexer` is a one-shot container that generates the search index + per-title
-  shards, then exits.
-- `web` bakes that generated data into an nginx image and serves the site, with
-  the subtitle archive tree mounted read-only for `/files/` downloads.
+Both should print a version. On Linux, if `docker` needs `sudo`, either prefix
+the commands below with `sudo` or add yourself to the `docker` group.
+
+### 1. Tell SubVault where your subtitles live
+
+Copy the example env file and edit the one line in it to point at the folder you
+extracted the archive into (the folder that *contains* `english/`,
+`vietnamese/`, etc.):
+
+```bash
+cp .env.example .env
+# then edit .env so it reads, e.g.:
+# SUBTITLES_ROOT=/storage/media/subtitles
+```
+
+Docker Compose reads `.env` automatically, so you set this once. (Make sure the
+layout matches the doubled `{lang}/{lang}` structure described in **Data
+source** above.)
+
+### 2. Build the search data (one-shot)
+
+```bash
+docker compose run --rm indexer
+```
+
+This starts a temporary container that reads your metadata and writes the search
+index + per-title files into `./public/data`, then removes itself (`--rm`). It
+prints progress and finishes with a line like `Wrote 133830 shards +
+search-index.json`. For the full English + Vietnamese dump this takes a few
+minutes and only needs to be re-run when your data changes.
+
+### 3. Build and start the website
+
+```bash
+docker compose up --build -d web
+```
+
+- `--build` builds the site image (bakes in the data from step 2).
+- `-d` runs it in the background ("detached").
+
+Then open **<http://localhost:8080>** in your browser.
+
+> **Note:** `web` depends on `indexer`, so `docker compose up web` will try to
+> re-run the (slow) indexer first. Once step 2 has succeeded once, skip the
+> re-run with:
+> ```bash
+> docker compose up --build -d --no-deps web
+> ```
+
+### Everyday commands
+
+```bash
+docker compose logs -f web     # watch the web server's logs (Ctrl-C to stop watching)
+docker compose ps              # see what's running
+docker compose stop            # stop the site (keeps everything)
+docker compose start web       # start it again
+docker compose down            # stop and remove the containers
+```
+
+### Updating to a new version
+
+```bash
+git pull
+docker compose run --rm indexer                 # only if the data/indexer changed
+docker compose up --build -d --no-deps web       # rebuild + restart the site
+```
+
+### Troubleshooting
+
+- **Downloads 404 / "No such file":** the archive volume isn't mounted where the
+  app expects. Check `SUBTITLES_ROOT` in `.env` points at the folder *containing*
+  the language dirs, then recreate: `docker compose up -d --force-recreate web`.
+  Confirm the mount with `docker compose exec web ls /subtitles` — you should see
+  your language folders.
+- **Only one language shows up:** the other language isn't in the doubled
+  `{lang}/{lang}/…` layout (see **Data source**). Fix the folders and re-run the
+  indexer.
+- **Port 8080 already in use:** change the left number under `ports:` in
+  `docker-compose.yml` (e.g. `"9090:80"`) and open that port instead.
+
+### What the two services do
+
+- **`indexer`** — a one-shot container that generates the search index +
+  per-title shards into `./public/data`, then exits.
+- **`web`** — builds those files into an nginx image and serves the site, with
+  your subtitle archive tree mounted read-only for `/files/` downloads.
 
 ## How it works
 
