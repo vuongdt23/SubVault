@@ -1,9 +1,32 @@
 # SubVault
 
-Static, client-side subtitle metadata browser. Search ~200k titles across
-languages; download links resolve to subtitle archives served by nginx.
+A static, client-side subtitle metadata browser. Search a large multi-language
+Subscene dump (hundreds of thousands of titles), filter by language / type /
+year, and follow download links to the actual subtitle archives — all served as
+static files by nginx, with search running entirely in the browser.
 
-## Dev (Mac, no real data)
+## Data source
+
+The subtitle dump comes from the Internet Archive "Subscene Final" collection,
+split per language:
+
+- **Torrent:** <https://archive.org/download/subscene-final-dump/Subscene%20Final%20by%20Language.torrent>
+
+Download and extract each `{lang}.7z` so the on-disk layout under your subtitles
+root becomes:
+
+```
+{root}/{lang}/{lang}/{lang}_metadata.json
+{root}/{lang}/{lang}/{lang} subtitles/{slug}/{slug}_{lang}-{id}.zip   # (or .rar)
+```
+
+The build step auto-discovers every language present — add one later by
+extracting its `.7z` and re-running the indexer; no code changes needed.
+
+## Quick start (no real data)
+
+You don't need the multi-GB dump to run SubVault — it ships a synthetic dataset
+generator.
 
 ```bash
 npm install
@@ -12,6 +35,21 @@ SUBTITLES_ROOT=fake-subtitles npm run gen:index   # → public/data/
 npm run dev                                       # http://localhost:4321
 npm test                                          # unit + smoke tests
 ```
+
+## Run with real data (Docker)
+
+Point `SUBTITLES_ROOT` at your extracted archive (see `.env.example`), then:
+
+```bash
+export SUBTITLES_ROOT=/path/to/subtitles       # or put it in a .env file
+docker compose run --rm indexer                # build public/data from metadata
+docker compose up --build web                  # serve on http://localhost:8080
+```
+
+- `indexer` is a one-shot container that generates the search index + per-title
+  shards, then exits.
+- `web` bakes that generated data into an nginx image and serves the site, with
+  the subtitle archive tree mounted read-only for `/files/` downloads.
 
 ## How it works
 
@@ -24,16 +62,11 @@ npm test                                          # unit + smoke tests
   2-hex-char FNV-1a hash of the slug, computed by the same dependency-free
   `shardOf` in both Node (build) and the browser (detail page), so paths match.
 
-## Prod (SSH host with real data at /storage/media/subtitles)
+## Tech
 
-```bash
-docker compose run --rm indexer     # generate public/data from real metadata
-docker compose up --build web       # serve on :8080, archives mounted read-only
-```
-
-Add a language by extracting its `.7z` into
-`/storage/media/subtitles/{lang}/` — the next `indexer` run picks it up
-automatically (no code change).
+Astro (static output) · TypeScript · Tailwind CSS · Orama (client-side search) ·
+stream-json (bounded-memory parsing of the large metadata files) · Vitest ·
+Docker + nginx.
 
 ## Implementation notes
 
@@ -52,10 +85,3 @@ automatically (no code change).
   step generates it before the image build and the Dockerfile bakes it into the
   static site. The multi-GB archive tree is an external read-only mount and never
   enters the build context.
-
-## Prerequisite for full English data
-
-English extraction (PID 2518515 on the SSH host, logging to
-`/storage/media/subtitles/english/_extract.log`) must finish before a prod
-`indexer` run includes English. Vietnamese is ready now; other languages appear
-automatically once their `.7z` is extracted under the subtitles root.

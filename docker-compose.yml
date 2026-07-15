@@ -7,7 +7,9 @@ services:
       SUBTITLES_ROOT: /subtitles
     volumes:
       - ./:/app
-      - /storage/media/subtitles:/subtitles:ro
+      # Point SUBTITLES_ROOT at the directory holding your extracted
+      # {lang}/{lang}/{lang}_metadata.json tree (see .env / .env.example).
+      - ${SUBTITLES_ROOT:-./subtitles}:/subtitles:ro
     command: sh -c "npm ci && npm run gen:index"
 
   web:
@@ -19,5 +21,5 @@ services:
       - "8080:80"
     volumes:
       # Serve raw archives directly from the host data.
-      - /storage/media/subtitles:/subtitles:ro
+      - ${SUBTITLES_ROOT:-./subtitles}:/subtitles:ro
     restart: unless-stopped

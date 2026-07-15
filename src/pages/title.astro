@@ -1,18 +1,41 @@
 ---
 import '../styles/global.css';
 ---
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SubVault — Title</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body class="min-h-screen bg-slate-900 text-slate-100">
-    <header class="border-b border-slate-800 p-4">
-      <a href="/" class="text-sm text-indigo-400">← Back to search</a>
-      <h1 id="t-title" class="mt-2 text-xl font-bold">Loading…</h1>
+  <body class="flex min-h-screen flex-col">
+    <div class="h-2 w-full shrink-0 bg-black"></div>
+
+    <header class="mx-auto w-full max-w-4xl px-6 pt-10">
+      <a href="/" class="btn rise">← Back to archive</a>
+      <p class="eyebrow mt-8 rise" style="animation-delay: 0.05s" id="t-eyebrow">Reel</p>
+      <h1 id="t-title" class="font-display mt-2 rise text-4xl font-semibold leading-tight tracking-tight sm:text-5xl" style="animation-delay: 0.08s">
+        Loading…
+      </h1>
+      <div class="hair mt-8"></div>
     </header>
-    <main id="detail" class="space-y-3 p-4"></main>
+
+    <main id="detail" class="mx-auto w-full max-w-4xl flex-1 space-y-4 px-6 pb-16 pt-6"></main>
+
+    <footer class="mx-auto w-full max-w-4xl shrink-0 px-6 pb-8 pt-6">
+      <div class="hair mb-5"></div>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span class="eyebrow">SubVault · Projection Room</span>
+        <a href="/" class="count-note" style="color: var(--color-amber-soft)">← Back to archive</a>
+      </div>
+    </footer>
+
     <script>
       import '../islands/detail.ts';
     </script>

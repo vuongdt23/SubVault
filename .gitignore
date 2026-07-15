@@ -5,3 +5,6 @@ public/data/
 fake-subtitles/
 .env
 *.log
+
+# AI planning/spec docs — not tracked
+docs/
