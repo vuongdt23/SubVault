@@ -57,7 +57,7 @@ site:
 ```bash
 echo "SUBTITLES_ROOT=/path/to/subtitles" > .env
 docker compose run --rm indexer              # generate ./public/data (a few minutes)
-docker compose up --build -d --no-deps web   # serve → http://localhost:8080
+docker compose up --build -d --no-deps web   # serve → http://localhost:7654
 ```
 
 - `indexer` — one-shot: reads the metadata, writes the search index + per-title

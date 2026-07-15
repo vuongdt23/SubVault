@@ -18,7 +18,7 @@ services:
       indexer:
         condition: service_completed_successfully
     ports:
-      - "8080:80"
+      - "7654:80"
     volumes:
       # Serve raw archives directly from the host data.
       - ${SUBTITLES_ROOT:-./subtitles}:/subtitles:ro
