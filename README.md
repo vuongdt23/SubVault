@@ -20,6 +20,18 @@ root becomes:
 {root}/{lang}/{lang}/{lang} subtitles/{slug}/{slug}_{lang}-{id}.zip   # (or .rar)
 ```
 
+Note the **doubled `{lang}/{lang}` directory** — this is required. Some archives
+extract "flat" (e.g. `english/english_metadata.json` instead of
+`english/english/english_metadata.json`). If yours did, nest it one level:
+
+```bash
+cd {root}/english
+mkdir -p english
+mv english_metadata.json "english subtitles" CREDITS.txt english/
+```
+
+(These are renames on the same filesystem, so it's instant even for large trees.)
+
 The build step auto-discovers every language present — add one later by
 extracting its `.7z` and re-running the indexer; no code changes needed.
 
