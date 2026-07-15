@@ -2,20 +2,22 @@ import type { RawEntry, Title, Version } from '../types';
 import { deriveYear, deriveType } from './derive';
 import { parseSubsceneDate } from './dates';
 import { slugFromDownload } from './slug';
+import { decodeEntities } from './entities';
 
 /** Insert one raw entry (already known to belong to `lang`) into the accumulator. */
 export function addEntry(acc: Map<string, Title>, lang: string, e: RawEntry): void {
   const slug = slugFromDownload(e.download);
   let t = acc.get(slug);
   if (!t) {
-    t = { slug, title: e.title, year: null, type: 'unknown', languages: {} };
+    // Human-readable fields carry HTML entities from Subscene; decode once here.
+    t = { slug, title: decodeEntities(e.title), year: null, type: 'unknown', languages: {} };
     acc.set(slug, t);
   }
   const version: Version = {
     id: e.subscene_id,
-    releases: e.releases ?? [],
-    author: e.author ?? '',
-    comment: e.comment ?? '',
+    releases: (e.releases ?? []).map(decodeEntities),
+    author: decodeEntities(e.author ?? ''),
+    comment: decodeEntities(e.comment ?? ''),
     date: parseSubsceneDate(e.date ?? ''),
     download: `${lang}/${e.download}`,
     subscene: e.original ?? '',

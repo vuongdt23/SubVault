@@ -36,25 +36,55 @@ export interface QueryResult {
   count: number;
 }
 
-/** Run a search + filter. Multi-language selection is OR-combined post-hoc. */
+/**
+ * Phrase-relevance tier for a title against the query (lower = better):
+ *   0 exact title · 1 title starts with query · 2 query is a substring ·
+ *   3 all query words present · 4 fuzzy/partial (Orama matched, we didn't).
+ * This fixes Orama's raw BM25 ordering, which buries an exact phrase match
+ * ("Red Sorghum") under many shorter loose matches ("Reds", "Redacted", …).
+ */
+function relevanceTier(title: string, q: string, words: string[]): number {
+  const t = title.toLowerCase();
+  if (t === q) return 0;
+  if (t.startsWith(q)) return 1;
+  if (t.includes(q)) return 2;
+  return words.every((w) => t.includes(w)) ? 3 : 4;
+}
+
+/** Run a search + filter. Text queries are re-ranked by phrase relevance. */
 export async function runQuery(
   db: AnyOrama, term: string, f: Filters, limit: number, offset: number,
 ): Promise<QueryResult> {
   const where = buildWhere(f);
+  const q = term.trim().toLowerCase();
+  const needsPostProcess = q.length > 0 || f.langs.length > 1;
+
   const res = await search(db, {
     term: term || undefined,
     where: Object.keys(where).length ? where : undefined,
-    limit: f.langs.length > 1 ? 10000 : limit,
-    offset: f.langs.length > 1 ? 0 : offset,
+    // When we re-rank / OR-filter languages we need the whole matched set.
+    limit: needsPostProcess ? 10000 : limit,
+    offset: needsPostProcess ? 0 : offset,
   } as any);
-  let hits = res.hits.map((h: any) => h.document as SearchDoc);
+
+  let scored = res.hits.map((h: any) => ({ doc: h.document as SearchDoc, score: h.score as number }));
+
   if (f.langs.length > 1) {
     const set = new Set(f.langs);
-    hits = hits.filter((d) => d.langs.some((l) => set.has(l)));
-    const count = hits.length;
-    return { hits: hits.slice(offset, offset + limit), count };
+    scored = scored.filter((s) => s.doc.langs.some((l) => set.has(l)));
   }
-  return { hits, count: res.count };
+
+  if (q) {
+    const words = q.split(/\s+/).filter(Boolean);
+    scored.forEach((s) => ((s as any).tier = relevanceTier(s.doc.title, q, words)));
+    scored.sort((a, b) => (a as any).tier - (b as any).tier || b.score - a.score);
+  }
+
+  if (needsPostProcess) {
+    const count = scored.length;
+    return { hits: scored.slice(offset, offset + limit).map((s) => s.doc), count };
+  }
+  return { hits: scored.map((s) => s.doc), count: res.count };
 }
 
 // Use Orama's built-in save/load rather than @orama/plugin-data-persistence.
