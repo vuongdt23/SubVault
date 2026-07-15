@@ -73,12 +73,17 @@ const YEAR_MAX = 2029;
     </header>
 
     <main class="stage w-full flex-1 px-8 pb-16 lg:px-16">
-      <div class="mb-6 mt-5 flex items-center gap-4">
+      <div class="mb-6 mt-5 flex flex-wrap items-center gap-4">
         <button id="prev" class="btn" disabled>← Prev</button>
         <button id="next" class="btn">Next →</button>
-        <span id="page-info" class="count-note ml-auto"></span>
+        <span id="page-info" class="count-note"></span>
+        <div class="viewtoggle ml-auto" role="group" aria-label="View mode">
+          <button class="viewbtn" data-view="card" aria-label="Card view" title="Card view">▦</button>
+          <button class="viewbtn" data-view="list" aria-label="List view" title="List view">☰</button>
+          <button class="viewbtn" data-view="table" aria-label="Table view" title="Table view">▤</button>
+        </div>
       </div>
-      <div id="results" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6"></div>
+      <div id="results"></div>
     </main>
 
     <footer class="w-full shrink-0 px-8 pb-8 pt-6 lg:px-16">
