@@ -2,12 +2,14 @@ import { hydrate, runQuery } from '../lib/search';
 import type { AnyOrama } from '@orama/orama';
 import type { Filters, MediaType, SearchDoc } from '../types';
 
-const PAGE = 48;
 type View = 'card' | 'list' | 'table';
 const VIEWS: View[] = ['card', 'list', 'table'];
+// Approx rendered row heights (px) per view, for filling the viewport.
+const ROW_H: Record<View, number> = { card: 118, list: 52, table: 42 };
 let db: AnyOrama | null = null;
 let page = 0;
 let view: View = 'card';
+let pageSize = 48;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -90,15 +92,39 @@ function applyViewClass(): void {
   });
 }
 
+/** Columns currently rendered in the card grid (1 for list/table). */
+function columnCount(): number {
+  if (view !== 'card') return 1;
+  const cols = getComputedStyle($('results')).gridTemplateColumns;
+  const n = cols ? cols.split(' ').filter(Boolean).length : 1;
+  return Math.max(1, n);
+}
+
+/**
+ * Pick a page size that (a) fills the viewport height and (b) is a whole
+ * number of rows, so the last row is never ragged. Recomputed on resize and
+ * view change.
+ */
+function computePageSize(): number {
+  const cols = columnCount();
+  const el = $('results');
+  const top = el.getBoundingClientRect().top;
+  const avail = Math.max(320, window.innerHeight - top - 120); // leave room for footer
+  const rows = Math.max(2, Math.ceil(avail / ROW_H[view]) + 1); // +1 so content overflows a touch
+  return rows * cols;
+}
+
 async function render() {
   if (!db) return;
+  applyViewClass();
+  pageSize = computePageSize();
   const term = ($('q') as HTMLInputElement).value.trim();
   const filters = readFilters();
-  const { hits, count } = await runQuery(db, term, filters, PAGE, page * PAGE);
-  applyViewClass();
+  const { hits, count } = await runQuery(db, term, filters, pageSize, page * pageSize);
   $('results').innerHTML = renderResults(hits);
-  const pages = Math.max(1, Math.ceil(count / PAGE));
-  $('page-info').textContent = `${count.toLocaleString()} titles · reel ${page + 1} / ${pages}`;
+  const pages = Math.max(1, Math.ceil(count / pageSize));
+  if (page >= pages) { page = pages - 1; } // keep page in range after a resize shrinks total pages
+  $('page-info').textContent = `${count.toLocaleString()} titles · page ${page + 1} of ${pages}`;
   ($('prev') as HTMLButtonElement).disabled = page === 0;
   ($('next') as HTMLButtonElement).disabled = page + 1 >= pages;
 }
@@ -151,6 +177,14 @@ async function init() {
 
   $('prev').addEventListener('click', () => { if (page > 0) { page--; render(); } });
   $('next').addEventListener('click', () => { page++; render(); });
+
+  // Refill on resize: the page size depends on viewport height + column count.
+  let lastSize = 0;
+  window.addEventListener('resize', debounce(() => {
+    const next = computePageSize();
+    if (next !== lastSize) { lastSize = next; render(); }
+  }, 200));
+
   render();
 }
 
